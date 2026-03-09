@@ -22,9 +22,7 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 let ws;
 function connect() {
-    // use wss:// for https pages, ws:// for http
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(`${protocol}//${location.host}/ws`);
+    ws = new WebSocket(`wss://${location.host}/ws`);
     ws.onopen = () => console.log('connected');
     ws.onmessage = (evt) => {
         const m = JSON.parse(evt.data);
