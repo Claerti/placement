@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/websocket"
 )
@@ -36,8 +37,12 @@ func main() {
 		go client.readPump()
 	})
 
-	addr := ":8080"
-	log.Println("listening on", addr)
+	addr := os.Getenv("PORT")
+	if addr == "" {
+		addr = "8080"
+	}
+	addr = ":" + addr
+	log.Println("listening on port", addr)
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.Fatal(err)
 	}
