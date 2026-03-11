@@ -1,4 +1,4 @@
-package main
+package canvas
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 type Hub struct {
 	clients    map[*Client]bool
 	broadcast  chan Move
-	register   chan *Client
+	Register   chan *Client
 	unregister chan *Client
 	width      int
 	height     int
@@ -19,7 +19,7 @@ type Hub struct {
 	filePath   string // where grid is persisted
 }
 
-func (h *Hub) registerClient(c *Client) {
+func (h *Hub) RegisterClient(c *Client) {
 	h.mu.Lock()
 	h.clients[c] = true
 
@@ -31,7 +31,7 @@ func (h *Hub) registerClient(c *Client) {
 				continue // skip empty cells
 			}
 			select {
-			case c.send <- Move{X: x, Y: y, Color: color}:
+			case c.Send <- Move{X: x, Y: y, Color: color}:
 			default:
 			}
 		}
@@ -64,18 +64,28 @@ func (h *Hub) updatePixel(m Move) error {
 func (h *Hub) Run() {
 	for {
 		select {
-		case newClient := <-h.register:
-			h.registerClient(newClient)
+		case newClient := <-h.Register:
+			h.RegisterClient(newClient)
 		case oldClient := <-h.unregister:
 			h.unregisterClient(oldClient)
 		case move := <-h.broadcast:
-			err := h.updatePixel(move)
-			if err != nil {
-				fmt.Println("Error updating pixel:", err)
+			if move.Reset {
+				h.mu.Lock()
+				h.grid = make([][]int, h.width)
+				for i := range h.grid {
+					h.grid[i] = make([]int, h.height)
+				}
+				h.mu.Unlock()
+				h.saveGrid()
+			} else {
+				err := h.updatePixel(move)
+				if err != nil {
+					fmt.Println("Error updating pixel:", err)
+				}
 			}
 			for client := range h.clients {
 				select {
-				case client.send <- move:
+				case client.Send <- move:
 				default:
 					// drop slow receiver
 				}
@@ -140,7 +150,7 @@ func NewHub(height int, filePath string) *Hub {
 		height:     height,
 		grid:       grid,
 		broadcast:  make(chan Move),
-		register:   make(chan *Client),
+		Register:   make(chan *Client),
 		unregister: make(chan *Client),
 		filePath:   filePath,
 	}

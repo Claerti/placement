@@ -1,16 +1,39 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>placement</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div id="controls">
-        <label for="colorPicker">Color:</label>
-        <input type="color" id="colorPicker" value="#ff0000">
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="main-container">
+      <div id="canvas-container">
+        <div id="controls">
+          <label for="colorPicker">Color:</label>
+          <input type="color" id="colorPicker" value="#ff0000" />
+          <input type="button" id="resetButton" value="Reset" />
+        </div>
+        <canvas id="canvas" width="1000" height="500"></canvas>
+      </div>
+      <div id="chat_div">
+        <div class="messages-window" id="messages">
+          <!-- Messages will be appended here -->
+        </div>
+        <form id="message-form">
+          <div class="input-area">
+            <input
+              type="text"
+              name="text"
+              min="1"
+              id="messageInput"
+              placeholder="Type a message..."
+            />
+            <button type="submit" id="send_button">Send</button>
+          </div>
+        </form>
+      </div>
     </div>
-    <canvas id="canvas" width="1000" height="500"></canvas>
-    <script src="app.js"></script>
-</body>
+    <script src="canvas.js"></script>
+    <script src="chat.js"></script>
+  </body>
 </html>
