@@ -8,7 +8,7 @@ const ctx = canvas.getContext("2d");
 
 async function initializeCanvas() {
   // 1. Fetch the true grid dimensions from the Go server
-  const response = await fetch(`${protocol}//${location.host}/config`);
+  const response = await fetch(`${location.protocol}//${location.host}/config`);
   const config = await response.json();
 
   width = config.width;
