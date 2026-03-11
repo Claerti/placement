@@ -1,13 +1,14 @@
 // We declare these at the top, but define them dynamically in initializeCanvas()
 let height, width;
 let canvas_ws;
+const protocol = location.protocol === "https:" ? "wss:" : "ws:";
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 async function initializeCanvas() {
   // 1. Fetch the true grid dimensions from the Go server
-  const response = await fetch(`http://${location.host}/config`);
+  const response = await fetch(`${protocol}//${location.host}/config`);
   const config = await response.json();
 
   width = config.width;
@@ -37,7 +38,6 @@ function drawPixel(x, y, color) {
 }
 
 function canvas_connect() {
-  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   canvas_ws = new WebSocket(`${protocol}//${location.host}/canvas`);
 
   canvas_ws.onopen = () => console.log("Canvas connected");
