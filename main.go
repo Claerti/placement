@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -14,16 +15,26 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
-	// allow any origin for development; tighten in production
-	CheckOrigin: func(r *http.Request) bool { return true },
+	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
 func main() {
+	gridHeight := 100
+	gridWidth := gridHeight * 2
 	// create and run hub (persist grid to disk)
-	h := canvas.NewHub(50, "grid.json")
+	h := canvas.NewHub(gridWidth, gridHeight, "canvas/grid.json")
 	go h.Run()
 
+	http.HandleFunc("/config", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int{
+			"width":  gridWidth,
+			"height": gridHeight,
+		})
+	})
+
 	http.Handle("/", http.FileServer(http.Dir("./static")))
+
 	http.HandleFunc("/canvas", func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {

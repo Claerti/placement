@@ -8,7 +8,7 @@ function AddMessage(message) {
 }
 
 let chat_ws;
-function connect() {
+function chat_connect() {
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   chat_ws = new WebSocket(`${protocol}//${location.host}/chat`);
   chat_ws.onopen = () => console.log("chat connected");
@@ -22,7 +22,7 @@ function connect() {
   };
 }
 
-connect();
+chat_connect();
 
 document.getElementById("message-form").addEventListener("submit", (e) => {
   e.preventDefault();

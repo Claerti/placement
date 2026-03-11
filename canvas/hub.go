@@ -2,6 +2,7 @@ package canvas
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -22,22 +23,8 @@ type Hub struct {
 func (h *Hub) RegisterClient(c *Client) {
 	h.mu.Lock()
 	h.clients[c] = true
-
-	// send the current state as a sequence of moves
-	for x := 0; x < h.width; x++ {
-		for y := 0; y < h.height; y++ {
-			color := h.grid[x][y]
-			if color == 0 {
-				continue // skip empty cells
-			}
-			select {
-			case c.Send <- Move{X: x, Y: y, Color: color}:
-			default:
-			}
-		}
-	}
-
 	h.mu.Unlock()
+	c.Send <- Move{FullGrid: h.grid}
 }
 
 func (h *Hub) unregisterClient(c *Client) {
@@ -96,7 +83,7 @@ func (h *Hub) Run() {
 
 func (h *Hub) loadGrid() error {
 	if h.filePath == "" {
-		return nil
+		return errors.New("No file path specified for grid.json")
 	}
 	f, err := os.Open(h.filePath)
 	if err != nil {
@@ -126,7 +113,7 @@ func (h *Hub) loadGrid() error {
 
 func (h *Hub) saveGrid() error {
 	if h.filePath == "" {
-		return nil
+		return errors.New("No file path specified for grid.json")
 	}
 	f, err := os.Create(h.filePath)
 	if err != nil {
@@ -138,8 +125,7 @@ func (h *Hub) saveGrid() error {
 	return encoder.Encode(h.grid)
 }
 
-func NewHub(height int, filePath string) *Hub {
-	width := height * 2
+func NewHub(width int, height int, filePath string) *Hub {
 	grid := make([][]int, width)
 	for i := range grid {
 		grid[i] = make([]int, height)
