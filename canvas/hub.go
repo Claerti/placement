@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 )
 
 type Hub struct {
@@ -40,11 +41,6 @@ func (h *Hub) updatePixel(m Move) error {
 	h.mu.Lock()
 	h.grid[m.X][m.Y] = m.Color
 	h.mu.Unlock()
-	// persist change (ignore failure; could log)
-	err := h.saveGrid()
-	if err != nil {
-		fmt.Println("failed to save grid:", err)
-	}
 	return nil
 }
 
@@ -111,15 +107,26 @@ func (h *Hub) loadGrid() error {
 	return nil
 }
 
+func (h *Hub) PeriodicSave() {
+	for {
+		<-time.After(1 * time.Minute)
+		err := h.saveGrid()
+		if err != nil {
+			fmt.Println("Error saving grid:", err)
+		}
+	}
+}
+
 func (h *Hub) saveGrid() error {
 	if h.filePath == "" {
-		return errors.New("No file path specified for grid.json")
+		h.filePath = "grid.json" // default path
 	}
 	f, err := os.Create(h.filePath)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
+
 	encoder := json.NewEncoder(f)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(h.grid)
@@ -142,5 +149,7 @@ func NewHub(width int, height int, filePath string) *Hub {
 	}
 	// attempt to load previous state
 	h.loadGrid()
+	go h.PeriodicSave()
+
 	return h
 }

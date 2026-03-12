@@ -1,6 +1,7 @@
 // We declare these at the top, but define them dynamically in initializeCanvas()
 let height, width;
 let canvas_ws;
+let isDrawing = false;
 const protocol = location.protocol === "https:" ? "wss:" : "ws:";
 
 const canvas = document.getElementById("canvas");
@@ -66,25 +67,36 @@ function canvas_connect() {
   };
 }
 
-canvas.addEventListener("click", (e) => {
+function handlePaint(e) {
   if (!canvas_ws || canvas_ws.readyState !== WebSocket.OPEN) return;
 
   const rect = canvas.getBoundingClientRect();
-
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
 
-  const canvasX = (e.clientX - rect.left) * scaleX;
-  const canvasY = (e.clientY - rect.top) * scaleY;
-
-  const x = Math.floor(canvasX);
-  const y = Math.floor(canvasY);
+  const x = Math.floor((e.clientX - rect.left) * scaleX);
+  const y = Math.floor((e.clientY - rect.top) * scaleY);
 
   if (x < 0 || x >= width || y < 0 || y >= height) return;
 
   const colorHex = document.getElementById("colorPicker").value;
   const color = parseInt(colorHex.slice(1), 16);
   canvas_ws.send(JSON.stringify({ x, y, color }));
+}
+
+canvas.addEventListener("mousedown", (e) => {
+  isDrawing = true;
+  handlePaint(e);
+});
+
+canvas.addEventListener("mousemove", (e) => {
+  if (isDrawing) {
+    handlePaint(e);
+  }
+});
+
+canvas.addEventListener("mouseup", () => {
+  isDrawing = false;
 });
 
 document.getElementById("resetButton").addEventListener("click", () => {

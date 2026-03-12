@@ -29,6 +29,10 @@ canvas {
   border: 1px solid #ccc;
   background: white;
   flex: 1;
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-drag: none;
+  touch-action: none;
 }
 
 #chat_div {
