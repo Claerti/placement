@@ -11,7 +11,7 @@ import (
 
 type Hub struct {
 	clients    map[*Client]bool
-	broadcast  chan Move
+	broadcast  chan *MessageWithClient
 	Register   chan *Client
 	unregister chan *Client
 	width      int
@@ -51,8 +51,8 @@ func (h *Hub) Run() {
 			h.RegisterClient(newClient)
 		case oldClient := <-h.unregister:
 			h.unregisterClient(oldClient)
-		case move := <-h.broadcast:
-			if move.Reset {
+		case msg := <-h.broadcast:
+			if msg.Move.Reset {
 				h.mu.Lock()
 				h.grid = make([][]int, h.width)
 				for i := range h.grid {
@@ -61,16 +61,20 @@ func (h *Hub) Run() {
 				h.mu.Unlock()
 				h.saveGrid()
 			} else {
-				err := h.updatePixel(move)
+				err := h.updatePixel(msg.Move)
 				if err != nil {
 					fmt.Println("Error updating pixel:", err)
 				}
 			}
 			for client := range h.clients {
+				if client == msg.Client && !msg.Move.Reset {
+					continue
+				} // only send to the client that made the move
 				select {
-				case client.Send <- move:
+				case client.Send <- msg.Move:
 				default:
 					// drop slow receiver
+
 				}
 			}
 		}
@@ -142,7 +146,7 @@ func NewHub(width int, height int, filePath string) *Hub {
 		width:      width,
 		height:     height,
 		grid:       grid,
-		broadcast:  make(chan Move),
+		broadcast:  make(chan *MessageWithClient),
 		Register:   make(chan *Client),
 		unregister: make(chan *Client),
 		filePath:   filePath,

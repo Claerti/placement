@@ -20,6 +20,11 @@ type Client struct {
 	Id   string
 }
 
+type MessageWithClient struct {
+	Client *Client
+	Move   Move
+}
+
 func (c *Client) ReadPump() {
 	defer func() {
 		c.Hub.unregister <- c
@@ -38,7 +43,7 @@ func (c *Client) ReadPump() {
 		if err := c.Conn.ReadJSON(&m); err != nil {
 			break
 		}
-		c.Hub.broadcast <- m
+		c.Hub.broadcast <- &MessageWithClient{Client: c, Move: m}
 	}
 }
 

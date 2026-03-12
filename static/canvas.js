@@ -1,39 +1,41 @@
-// We declare these at the top, but define them dynamically in initializeCanvas()
-let height, width;
+// Global states
 let canvas_ws;
 let isDrawing = false;
+let color = 0xff0000;
 const protocol = location.protocol === "https:" ? "wss:" : "ws:";
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 async function initializeCanvas() {
-  // 1. Fetch the true grid dimensions from the Go server
-  const response = await fetch(`${location.protocol}//${location.host}/config`);
-  const config = await response.json();
+  try {
+    const response = await fetch(
+      `${location.protocol}//${location.host}/config`,
+    );
+    const config = await response.json();
 
-  width = config.width;
-  height = config.height;
+    canvas.width = config.width;
+    canvas.height = config.height;
 
-  // 2. Set the canvas's internal drawing resolution to match the grid exactly
-  canvas.width = width;
-  canvas.height = height;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // 3. Initialize the background
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // 4. Connect to the WebSocket now that we're properly sized
-  canvas_connect();
+    canvas_connect();
+  } catch (err) {
+    console.error("Failed to initialize canvas:", err);
+  }
 }
 
-function drawPixel(x, y, color) {
+function drawPixel(x, y, colorToDraw) {
   let hex;
-  if (color === 0) {
+
+  // Logic: 0 is white, otherwise convert number to hex
+  if (colorToDraw === 0) {
     hex = "ffffff";
   } else {
-    hex = color.toString(16).padStart(6, "0");
+    hex = colorToDraw.toString(16).padStart(6, "0");
   }
+
   ctx.fillStyle = `#${hex}`;
   ctx.fillRect(x, y, 1, 1);
 }
@@ -46,23 +48,30 @@ function canvas_connect() {
   canvas_ws.onmessage = (event) => {
     const m = JSON.parse(event.data);
 
+    // Case 1: Initial load of the whole board
     if (m.fullGrid) {
+      console.log("Received full grid");
       m.fullGrid.forEach((row, x) => {
-        row.forEach((color, y) => drawPixel(x, y, color));
+        row.forEach((pixelColor, y) => {
+          drawPixel(x, y, pixelColor);
+        });
       });
-      return; // Exit here so we don't trigger the single-pixel logic below
+      return; // Stop here
     }
 
+    // Case 2: Reset command
     if (m.reset) {
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-    } else {
-      drawPixel(m.x, m.y, m.color);
+      return;
     }
+
+    // Case 3: Single pixel update (Standard path)
+    drawPixel(m.x, m.y, m.color);
   };
 
   canvas_ws.onclose = () => {
-    console.log("disconnected, retrying in 1s");
+    console.log("Disconnected, retrying in 1s");
     setTimeout(canvas_connect, 1000);
   };
 }
@@ -71,38 +80,46 @@ function handlePaint(e) {
   if (!canvas_ws || canvas_ws.readyState !== WebSocket.OPEN) return;
 
   const rect = canvas.getBoundingClientRect();
+
+  // Calculate how many 'real' pixels are in one 'css' pixel
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
 
+  // Transform mouse position to canvas resolution
   const x = Math.floor((e.clientX - rect.left) * scaleX);
   const y = Math.floor((e.clientY - rect.top) * scaleY);
 
-  if (x < 0 || x >= width || y < 0 || y >= height) return;
-
-  const colorHex = document.getElementById("colorPicker").value;
-  const color = parseInt(colorHex.slice(1), 16);
-  canvas_ws.send(JSON.stringify({ x, y, color }));
+  // Boundary check
+  if (x >= 0 && x < canvas.width && y >= 0 && y < canvas.height) {
+    // Local draw (for immediate feedback)
+    drawPixel(x, y, color);
+    // Server send
+    canvas_ws.send(JSON.stringify({ x, y, color }));
+  }
 }
 
 canvas.addEventListener("mousedown", (e) => {
   isDrawing = true;
-  handlePaint(e);
+  handlePaint(e); // Paint immediately on click, don't wait for movement
 });
 
 canvas.addEventListener("mousemove", (e) => {
-  if (isDrawing) {
-    handlePaint(e);
-  }
+  if (isDrawing) handlePaint(e);
 });
 
-canvas.addEventListener("mouseup", () => {
+window.addEventListener("mouseup", () => {
   isDrawing = false;
 });
 
 document.getElementById("resetButton").addEventListener("click", () => {
-  if (!canvas_ws || canvas_ws.readyState !== WebSocket.OPEN) return;
-  canvas_ws.send(JSON.stringify({ x: 0, y: 0, color: 0, reset: true }));
+  if (canvas_ws?.readyState === WebSocket.OPEN) {
+    canvas_ws.send(JSON.stringify({ x: 0, y: 0, color: 0, reset: true }));
+  }
 });
 
-// Kick off the initialization
-document.addEventListener("DOMContentLoaded", initializeCanvas);
+document.getElementById("colorPicker").addEventListener("input", (e) => {
+  color = parseInt(e.target.value.slice(1), 16);
+});
+
+// Start the app
+initializeCanvas();
