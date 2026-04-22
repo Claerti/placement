@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/claerti/placement/canvas"
-	"github.com/claerti/placement/chat"
+	"github.com/wynne-evan/placement/canvas"
+	"github.com/wynne-evan/placement/chat"
 
 	"github.com/gorilla/websocket"
 )
